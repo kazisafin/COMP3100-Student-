@@ -1,111 +1,145 @@
-import java.net.*;
-import java.util.ArrayList;
 import java.io.*;  
+import java.net.*;
+import java.util.ArrayList; 
 
-class MyClient{  
+public class MyClient {  
 public static void main(String args[])throws Exception{  
 
-String name = System.getProperty("user.name");
-String mess = ""; //last message
-String[] minfo; //specfic information from last message
 
-ArrayList<String[]> data = new ArrayList<String[]>();  
-String ltype = "";
-int lnum = 0; //number of largest server types (limit)
-String jobID = ""; 
-String[] recs; // Includes n.o. Records and size 
+        String name = System.getProperty("user.name");
 
-try{
+        ArrayList<String[]> data = new ArrayList<String[]>();
 
-//default server connection
-Socket s=new Socket("localhost",50000);  
-DataOutputStream dout=new DataOutputStream(s.getOutputStream());  
-BufferedReader bin = new BufferedReader(new InputStreamReader(s.getInputStream()));  
+        String last_message = ""; // stores the last message.
 
-//basic server exchanges
-dout.write(("HELO\n").getBytes());
-bin.readLine();
-dout.write(("AUTH " + name + "\n").getBytes());
-bin.readLine();
+        String[] info; //  stores the specfic information from last message
 
-dout.write(("REDY\n").getBytes());      
-mess = bin.readLine(); //recieves jobn first           
-minfo = mess.split(" "); 
-jobID = minfo[2];
-//Sends GETS Capable Core/Memory/Disk
-dout.write(("GETS Capable " + minfo[4] + " " + minfo[5] + " " + minfo[6] + " \n").getBytes()); 
-recs = bin.readLine().split(" "); //DATA nRecs Size
-int nRecs = Integer.parseInt(recs[1]); 
-dout.write(("OK\n").getBytes());   
-
-//STORE into list
-for (int i = 0; i< nRecs;i++){
-    data.add(bin.readLine().split(" "));
-}
-
-
-//FIND LARGEST type based on core size
-ltype = data.get(0)[0];
-for (int i =1; i< nRecs; i++){
-    if (Integer.parseInt(data.get(i)[4]) > Integer.parseInt(data.get(i-1)[4])){
-        ltype = data.get(i)[0];
-    }
-}
-
-for (String[] a: data){ //count largest server 
-    if (a[0].equals(ltype)){
-        lnum++;
-    }
-}
-
-
-dout.write(("OK\n").getBytes());  
-bin.readLine(); 
-int val = 0;
-
-while(true){
-    if (mess.startsWith("JOBN")){        
-        dout.write(("SCHD " + jobID + " " + ltype + " " + val + "\n").getBytes());   //iterate through 0 to (lnum-1)
-        val+=1;
-        if (val >= lnum){
-            val = 0;
-        }
-
-        bin.readLine();
-        dout.write(("REDY\n").getBytes());   
-        mess = bin.readLine();
+        String server_type = ""; //used for to store server type.
         
-         while (mess.startsWith("JCPL")){   
-             dout.write(("REDY\n").getBytes());  
-             mess = bin.readLine();
-         }
+        int server_num = 0; // stores number of largest server types.
 
-        if (mess.startsWith("NONE")){
-            break;
+        String jobID = ""; // stores the information regarding jonID
+
+        String[] records; // stores the record section.
+
+        try {
+            // intializing the connection.
+            Socket socket = new Socket("localhost", 50000);
+            DataOutputStream dataout = new DataOutputStream(socket.getOutputStream());
+            BufferedReader bin = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+            // Hanshake process 
+            dataout.write(("HELO\n").getBytes());
+            bin.readLine();
+            dataout.write(("AUTH " + name + "\n").getBytes());
+            bin.readLine();
+
+            dataout.write(("REDY\n").getBytes());
+            last_message = bin.readLine(); // receives job submission information.
+            info = last_message.split(" ");
+            jobID = info[2];
+
+            // Client sends GETS command to obtain server information request.
+            dataout.write(("GETS Capable " + info[4] + " " + info[5] + " " + info[6] + " \n").getBytes());
+            records = bin.readLine().split(" "); 
+            int num_records = Integer.parseInt(records[1]);
+            dataout.write(("OK\n").getBytes());
+
+           
+
+            int num1 =0;
+            while(num1 < num_records){
+                data.add(bin.readLine().split(" "));
+                num1++;
+
+          }
+
+            // obtains information of server based on the core size.
+            server_type = data.get(0)[0];
+            
+
+            int temp1 = 1;
+            while( temp1<num_records){
+                if (Integer.parseInt(data.get(temp1)[4]) > Integer.parseInt(data.get(temp1 - 1)[4])) {
+                           server_type = data.get(temp1)[0];
+                 }
+                       temp1++;
+                    
+            
+               
+            }
+             //Gets the count of the largest server type.
+            for (String[] count : data) { 
+                if (count[0].equals(server_type)) {
+                    server_num++;
+                }
+            }
+
+           
+
+
+            dataout.write(("OK\n").getBytes());
+            bin.readLine();
+            int value = 0;
+
+            while (true) {
+                if (last_message.startsWith("JOBN")) {
+                    dataout.write(("SCHD " + jobID + " " + server_type + " " + value + "\n").getBytes()); // iterate
+                                                                                                          // through 0
+                                                                                                          // to
+                    
+                    value += 1;
+                    if (value >= server_num) {
+                        value = 0;
+                    }
+
+                    bin.readLine();
+                    dataout.write(("REDY\n").getBytes());
+                    last_message = bin.readLine();
+
+                    while (last_message.startsWith("JCPL")) {
+                        dataout.write(("REDY\n").getBytes());
+                        last_message = bin.readLine();
+                    }
+
+                    if (last_message.startsWith("NONE")) {
+                        break;
+                    }
+
+                    info = last_message.split(" ");
+                    jobID = info[2];
+                    dataout.write(("GETS Capable " + info[4] + " " + info[5] + " " + info[6] + "\n").getBytes());
+                    records = bin.readLine().split(" ");
+                    num_records = Integer.parseInt(records[1]);
+                    dataout.write(("OK\n").getBytes());
+                    
+
+                    int temp2 = 0;
+                    while(temp2 < num_records){
+                        bin.readLine();
+                        temp2++;
+                    }
+                    
+                
+
+                    dataout.write(("OK\n").getBytes());
+                    bin.readLine();
+                }
+            }
+
+            dataout.write(("QUIT\n").getBytes());
+
+            dataout.flush();
+
+            bin.readLine();
+
+            dataout.close();
+
+            socket.close();
+        } catch (Exception e) {
+            System.out.println(e);
         }
-
-        minfo = mess.split(" "); 
-        jobID = minfo[2];
-        dout.write(("GETS Capable " + minfo[4] + " " + minfo[5] + " " + minfo[6] + "\n").getBytes()); 
-        recs = bin.readLine().split(" "); //DATA nRecs Size
-        nRecs = Integer.parseInt(recs[1]); 
-        dout.write(("OK\n").getBytes());  
-         for (int i = 0; i< nRecs;i++){
-             bin.readLine();
-         }
-        dout.write(("OK\n").getBytes());  
-        bin.readLine();
     }
 }
 
-dout.write(("QUIT\n").getBytes());
-dout.flush();
-bin.readLine();
-dout.close();  
-
-s.close(); 
- 
-}catch(Exception e){System.out.println(e);}
-} 
-}
 
