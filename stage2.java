@@ -1,149 +1,160 @@
-import java.io.*;
 import java.net.*;
+import java.io.*;
 
 public class stage2 {
-	public static void main(String[] args) throws Exception{
-		Socket s=new Socket("localhost",50000);
-		DataOutputStream dout=new DataOutputStream(s.getOutputStream());
-		BufferedReader dis=new BufferedReader(new
-		InputStreamReader(s.getInputStream()));
+	public static void main(String[] args) throws Exception {
+
+		Socket soc = new Socket("localhost", 50000);
+		DataOutputStream dout = new DataOutputStream(soc.getOutputStream());
+		BufferedReader bin = new BufferedReader(new InputStreamReader(soc.getInputStream()));
+
+		int jcount = 0; // keep track of the number of jobs processed.
+		String resServer;// to store server response
+
 		
-		String strServer;
-		int smallest = 0;
-		int count = 0;
-		
+
 		String client = "HELO\n";
-		
 		dout.write(client.getBytes());
 		dout.flush();
 		
-		strServer = dis.readLine();
-		System.out.println("Message = " + strServer);	
-		
+
+		resServer = bin.readLine();
+
 		String username = System.getProperty("user.name");
-		client = "AUTH "+username+"\n";
-		
+		client = "AUTH " + username + "\n";
+
 		dout.write(client.getBytes());
 		dout.flush();
 
-		strServer = dis.readLine();
-		System.out.println("Message = " + strServer);
-		
-		while(!(strServer.contains("NONE"))) {
+		resServer = bin.readLine();
+
+		// while loop continies until the server response in none.
+		// loops is responsible for processing jobs received from the server.
+
+		while (!(resServer.contains("NONE"))) {
 			client = "REDY\n";
-			
+
 			dout.write(client.getBytes());
 			dout.flush();
-			
-			strServer = dis.readLine(); //JOB
-			System.out.println("Job = " + strServer);
-			
-			if (strServer.contains("JOBN")) {
-				String[] core = strServer.split(" ");
-				int coree = Integer.parseInt(core[4]);
-				System.out.println("Core: " + core[4]);
-				
+
+			resServer = bin.readLine();
+
+			if (resServer.contains("JOBN")) {
+				String[] core = resServer.split(" ");
+
+				// inquire about available servers with the required information.
 				client = "GETS Avail " + core[4] + " " + core[5] + " " + core[6] + "\n";
-				
+
 				dout.write(client.getBytes());
 				dout.flush();
-				
-				strServer = dis.readLine(); //DATA
-				System.out.println("Data = " + strServer);
-				
+
+				resServer = bin.readLine();
+
 				client = "OK\n";
-				
+
 				dout.write(client.getBytes());
 				dout.flush();
+
+				// Data of available servers is is split into an array of strings.
+
+				String[] serverdata = resServer.split(" ");
 				
-				String[] data = strServer.split(" ");
+
 				
-				if (Integer.parseInt(data[1]) != 0) {
-					int availServers = Integer.parseInt(data[1]);
-				
-					String[] nRec = new String[availServers];
-				
-					for (int i = 0; i < availServers; i++) {
-						strServer = dis.readLine();
-						nRec[i] = strServer;
-						//System.out.println(nRec[i]);
+
+				// if the number of avilable numbers is not equal to 0
+				// select a server for scheduling.
+
+				if (Integer.parseInt(serverdata[1]) != 0) {
+					int availServers = Integer.parseInt(serverdata[1]);
+
+					String[] avilServeStrings = new String[availServers];// stores the details of available servers
+
+					int i = 0;
+					while (i < availServers) {
+						resServer = bin.readLine();
+						avilServeStrings[i] = resServer;
+						i++;
 					}
-				
+
 					client = "OK\n";
-				
+
 					dout.write(client.getBytes());
 					dout.flush();
-				
-					strServer = dis.readLine();
-		
-					String[] first = nRec[0].split(" "); //1st
-		
-					client = "SCHD " + count + " " + first[0] + " " + first[1] + "\n";
-				
+
+					resServer = bin.readLine();
+
+					// avilServeStrings to store details of available servers.
+
+					String[] first = avilServeStrings[0].split(" "); // 1st the schdueling command look at the format of the command
+					
+					// the first server shows up it processes the work on to that server.
+					client = "SCHD " + jcount + " " + first[0] + " " + first[1] + "\n";
+
 					dout.write(client.getBytes());
 					dout.flush();
-		
-					strServer = dis.readLine();
-					System.out.println("Message = " + strServer); 
-					count++;	
+
+					resServer = bin.readLine();
+					jcount++;
+					// if the condition fails the algorith checks which serverr can handle the job and assigns it accordingly
+					
 				} else {
 					client = "GETS Capable " + core[4] + " " + core[5] + " " + core[6] + "\n";
-					
+
 					dout.write(client.getBytes());
 					dout.flush();
-					
-					strServer = dis.readLine(); //DATA
-					System.out.println("Data = " + strServer);
-					
+
+					resServer = bin.readLine();
+
 					client = "OK\n";
-					
+
 					dout.write(client.getBytes());
 					dout.flush();
-					
-					strServer = dis.readLine();
-					
-					String[] capSer = strServer.split(" ");
-					
-					int capServ = Integer.parseInt(capSer[1]);
-					
-					String[] nRec = new String[capServ];
-					
-					for (int i = 0; i < capServ; i++) {
-						strServer = dis.readLine();
-						nRec[i] = strServer;
-						//System.out.println(nRec[i]);
+
+					resServer = bin.readLine();
+
+					String[] cs = resServer.split(" ");
+
+					int csv = Integer.parseInt(cs[1]);
+
+					String[] avilServeStrings = new String[csv];
+
+					int i = 0;
+
+					while (i < csv) {
+						resServer = bin.readLine();
+						avilServeStrings[i] = resServer;
+						i++;
 					}
-					
+
 					client = "OK\n";
-				
+
 					dout.write(client.getBytes());
 					dout.flush();
-				
-					strServer = dis.readLine();
-		
-					String[] first = nRec[0].split(" "); //1st
-		
-					client = "SCHD " + count + " " + first[0] + " " + first[1] + "\n";
-				
+
+					resServer = bin.readLine();
+
+					String[] first = avilServeStrings[0].split(" "); // 1st
+
+					client = "SCHD " + jcount + " " + first[0] + " " + first[1] + "\n";
+
 					dout.write(client.getBytes());
 					dout.flush();
-		
-					strServer = dis.readLine();
-					System.out.println("Message = " + strServer); 
-					count++;
-					
+
+					resServer = bin.readLine();
+					jcount++;
+
 				}
 			}
 		}
 		String quit = "QUIT\n";
-		
+
 		dout.write(quit.getBytes());
 		dout.flush();
-		
-		strServer = dis.readLine();
-		System.out.println("Message = " + strServer);
-		
+
+		resServer = bin.readLine();
+
 		dout.close();
-		s.close();
+		soc.close();
 	}
 }
